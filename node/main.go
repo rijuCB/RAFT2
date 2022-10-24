@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sync"
 
 	"github.com/fatih/color"
 	"github.com/gorilla/mux"
@@ -26,7 +27,7 @@ func RequestVote(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "You've got my vote")
 }
 
-func main() {
+func FindAndServePort() {
 	// Colours!!
 	cyan := color.New(color.FgCyan).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
@@ -63,4 +64,14 @@ func main() {
 	if err := http.Serve(l, router); err != nil { //Respond to requests
 		log.Printf("ERROR!\n%v\n", err)
 	}
+}
+
+func main() {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		FindAndServePort()
+	}()
+	wg.Wait()
 }
