@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/fatih/color"
@@ -77,6 +79,29 @@ func FindAndServePort(ownPort *int) {
 	}
 }
 
+func SendEmptyAppendLogs(port string) {
+	resp, err := http.Post(url+port+api+endAppendLogs, "application/json", strings.NewReader(""))
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	println(string(b))
+}
+
+func HeartBeat(ownPort int) {
+	for i := 0; i < numNodes; i++ {
+		//Ping all ports except self
+		if minPort+i != ownPort {
+			SendEmptyAppendLogs(fmt.Sprintf(":%v", (minPort + i)))
+		}
+	}
+}
+
 func main() {
 	var ownPort int
 
@@ -86,6 +111,8 @@ func main() {
 		defer wg.Done()
 		FindAndServePort(&ownPort)
 	}()
+
+	HeartBeat(ownPort)
 
 	wg.Wait()
 }
