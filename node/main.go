@@ -11,6 +11,16 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	minPort  = 8091
+	numNodes = 3
+
+	url            = "http://localhost"
+	api            = "/api/v1"
+	endAppendLogs  = "/append-logs"
+	endRequestVote = "/request-vote"
+)
+
 func AppendLogs(w http.ResponseWriter, r *http.Request) {
 	//specify status code
 	w.WriteHeader(http.StatusOK)
@@ -27,7 +37,7 @@ func RequestVote(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "You've got my vote")
 }
 
-func FindAndServePort() {
+func FindAndServePort(ownPort *int) {
 	// Colours!!
 	cyan := color.New(color.FgCyan).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
@@ -38,18 +48,19 @@ func FindAndServePort() {
 	router := mux.NewRouter()
 
 	// specify endpoints, handler functions and HTTP method
-	router.HandleFunc("/api/v1/append-entries", AppendLogs).Methods("POST")
-	router.HandleFunc("/api/v1/request-vote", RequestVote).Methods("GET")
+	router.HandleFunc(api+endAppendLogs, AppendLogs).Methods("POST")
+	router.HandleFunc(api+endRequestVote, RequestVote).Methods("GET")
 	http.Handle("/", router)
 
 	var l net.Listener
 	var err error
 	//Search for open ports between 8091 & 8100
-	for port := 8091; port < 8100; port++ {
-		attemptPort := fmt.Sprintf(":%v", port)
-		fmt.Printf("Attempting to open port %v ... ", cyan(port))
+	for i := 0; i < numNodes; i++ {
+		attemptPort := fmt.Sprintf(":%v", (minPort + i))
+		fmt.Printf("Attempting to open port %v ... ", cyan(attemptPort))
 		l, err = net.Listen("tcp", attemptPort) //Attempt to open port
 		if err == nil {
+			*ownPort = minPort + i
 			fmt.Printf(green("success!\n"))
 			break
 		}
@@ -67,11 +78,14 @@ func FindAndServePort() {
 }
 
 func main() {
+	var ownPort int
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		FindAndServePort()
+		FindAndServePort(&ownPort)
 	}()
+
 	wg.Wait()
 }
