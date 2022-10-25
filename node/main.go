@@ -13,6 +13,26 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type Rank int
+
+const (
+	Follower Rank = iota
+	Candidate
+	Leader
+)
+
+func (r Rank) String() string {
+	switch r {
+	case Follower:
+		return "Follower"
+	case Candidate:
+		return "Candidate"
+	case Leader:
+		return "Leader"
+	}
+	return "unknown"
+}
+
 const (
 	minPort  = 8091
 	numNodes = 3
@@ -104,6 +124,8 @@ func HeartBeat(ownPort int) {
 
 func main() {
 	var ownPort int
+	var rank Rank
+	fmt.Println(rank.String())
 
 	var wg sync.WaitGroup
 	wg.Add(1)
