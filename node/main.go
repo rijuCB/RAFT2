@@ -99,7 +99,7 @@ func RequestVote(w http.ResponseWriter, r *http.Request) {
 	//specify HTTP status code
 	w.WriteHeader(http.StatusOK)
 
-	fmt.Printf("Received vote request from node:%v for term %v", cyan(requester), yellow(term))
+	fmt.Printf("Received vote request from node:%v for term %v\n", cyan(requester), yellow(newTerm))
 
 	if newTerm > term {
 		vote = requester
@@ -224,12 +224,11 @@ func candidateAction(ownPort int) {
 	//request votes from other nodes in go routine
 	Campaign(ownPort, term, &votes)
 
-	//If recieved simple majority
-	// rank++
-	//timeout
+	//Timeout
+	//If achieved a simple majority, then promote self
 	select {
 	case <-time.After(time.Duration(timeout/2) * time.Millisecond):
-		if votes >= numNodes/2+1 { //If achieved a simple majority
+		if votes >= numNodes/2+1 {
 			rank++
 		}
 	}
