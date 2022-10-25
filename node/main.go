@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -40,15 +40,20 @@ const (
 	numNodes = 3
 	timeout  = 1500
 
-	url            = "http://localhost"
-	api            = "/api/v1"
-	endAppendLogs  = "/append-logs"
-	endRequestVote = "/request-vote"
+	url              = "http://localhost"
+	api              = "/api/v1"
+	endAppendLogs    = "/append-logs"
+	paramAppendLogs  = ""
+	endRequestVote   = "/request-vote"
+	paramRequestVote = "/{term:[0-9]+}/{requester:[0-9]+}"
 )
 
 var ( //TODO: make struct & use method for endpoint functions
 	ping chan int
 	rank Rank
+
+	term int
+	vote int
 
 	// Colours!!
 	cyan   = color.New(color.FgCyan).SprintFunc()
@@ -69,12 +74,45 @@ func AppendLogs(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "API is up and running")
 }
 
+func parseVoteRequest(r *http.Request) (int, int) {
+	vars := mux.Vars(r)
+	term, err := strconv.Atoi(vars["term"])
+	if err != nil {
+		fmt.Println(red(err))
+		return -1, -1
+	}
+	requester, err := strconv.Atoi(vars["requester"])
+	if err != nil {
+		fmt.Println(red(err))
+		return -1, -1
+	}
+	return term, requester
+}
+
 func RequestVote(w http.ResponseWriter, r *http.Request) {
+	newTerm, requester := parseVoteRequest(r)
+	if newTerm < 0 || requester < 0 {
+		fmt.Fprintf(w, red("Invalid parameters!"))
+		return //Invalid values
+	}
+
 	//specify HTTP status code
 	w.WriteHeader(http.StatusOK)
 
+	fmt.Printf("Received vote request from node:%v for term %v", cyan(requester), yellow(term))
+
+	if newTerm > term {
+		vote = requester
+		term = newTerm
+	}
+	if rank == Follower {
+		ping <- 1
+	}
+
+	fmt.Printf("Vote cast for %v\n", green(vote))
+
 	//update response
-	fmt.Fprintf(w, "You've got my vote")
+	fmt.Fprintf(w, "%v", vote)
 }
 
 func FindAndServePort(ownPort *int) {
@@ -82,13 +120,13 @@ func FindAndServePort(ownPort *int) {
 	router := mux.NewRouter()
 
 	// specify endpoints, handler functions and HTTP method
-	router.HandleFunc(api+endAppendLogs, AppendLogs).Methods("POST")
-	router.HandleFunc(api+endRequestVote, RequestVote).Methods("GET")
+	router.HandleFunc(api+endAppendLogs+paramAppendLogs, AppendLogs).Methods("POST")
+	router.HandleFunc(api+endRequestVote+paramRequestVote, RequestVote).Methods("GET")
 	http.Handle("/", router)
 
 	var l net.Listener
 	var err error
-	//Search for open ports between 8091 & 8100
+	//Search for open ports
 	for i := 0; i < numNodes; i++ {
 		attemptPort := fmt.Sprintf(":%v", (minPort + i))
 		fmt.Printf("Attempting to open port %v ... ", cyan(attemptPort))
@@ -114,15 +152,15 @@ func FindAndServePort(ownPort *int) {
 func SendEmptyAppendLogs(endpoint string) {
 	resp, err := http.Post(endpoint, "application/json", strings.NewReader(""))
 	if err != nil {
-		log.Println(err)
+		fmt.Println(red(err))
 		return
 	}
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(red(err))
 		return
 	}
-	fmt.Printf("%s:%s\n", endpoint, string(b))
+	fmt.Printf("%s\n%s\n", cyan(endpoint), green(string(b)))
 }
 
 func HeartBeat(ownPort int) {
@@ -130,6 +168,38 @@ func HeartBeat(ownPort int) {
 		//Ping all ports except self
 		if minPort+i != ownPort {
 			SendEmptyAppendLogs(fmt.Sprintf("%s:%v%s%s", url, (minPort + i), api, endAppendLogs))
+		}
+	}
+}
+
+func requestVoteFromNode(endpoint string) int {
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		fmt.Println(red(err))
+		return -1
+	}
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println(red(err))
+		return -1
+	}
+
+	ballot, err := strconv.Atoi(string(b))
+	if err != nil {
+		fmt.Println(red(err))
+		return -1
+	}
+	fmt.Printf("%s\n%s\n", cyan(endpoint), green(ballot))
+	return ballot
+}
+
+func Campaign(ownPort int, term int, votes *int) {
+	for i := 0; i < numNodes; i++ {
+		//Ping all ports except self
+		if minPort+i != ownPort {
+			if requestVoteFromNode(fmt.Sprintf("%s:%v%s%s/%v/%v", url, (minPort+i), api, endRequestVote, term, ownPort)) == ownPort {
+				*votes++
+			}
 		}
 	}
 }
@@ -146,25 +216,40 @@ func followerAction(ping <-chan int, rGen *rand.Rand) {
 }
 
 // Need to implement, automatically upgrade to leader for now
-func candidateAction() {
-	rank++
+func candidateAction(ownPort int) {
+	votes := 1 //Vote for self
+	//increment term
+	term++
+	fmt.Printf("Campaign term: %v\n", yellow(term))
+	//request votes from other nodes in go routine
+	Campaign(ownPort, term, &votes)
+
+	//If recieved simple majority
+	// rank++
+	//timeout
+	select {
+	case <-time.After(time.Duration(timeout/2) * time.Millisecond):
+		if votes >= numNodes/2+1 { //If achieved a simple majority
+			rank++
+		}
+	}
 }
 
 // Ping all other nodes with empty appendLogs call periodically to prevent timeouts
 func leaderAction(ownPort int) {
 	select {
-	case <-time.After(time.Duration(timeout) * time.Millisecond):
+	case <-time.After(time.Duration(timeout/2) * time.Millisecond):
 		HeartBeat(ownPort)
 	}
 }
 
 func performRankAction(ping <-chan int, ownPort int, rGen *rand.Rand) {
-	fmt.Println(rank.String())
+	fmt.Println(yellow(rank.String()))
 	switch rank {
 	case Follower:
 		followerAction(ping, rGen)
 	case Candidate:
-		candidateAction()
+		candidateAction(ownPort)
 	case Leader:
 		leaderAction(ownPort)
 	}
