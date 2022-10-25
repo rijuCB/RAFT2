@@ -46,9 +46,15 @@ const (
 	endRequestVote = "/request-vote"
 )
 
-var (
+var ( //TODO: make struct & use method for endpoint functions
 	ping chan int
 	rank Rank
+
+	// Colours!!
+	cyan   = color.New(color.FgCyan).SprintFunc()
+	green  = color.New(color.FgGreen).SprintFunc()
+	red    = color.New(color.FgRed).SprintFunc()
+	yellow = color.New(color.FgYellow).SprintFunc()
 )
 
 func AppendLogs(w http.ResponseWriter, r *http.Request) {
@@ -72,12 +78,6 @@ func RequestVote(w http.ResponseWriter, r *http.Request) {
 }
 
 func FindAndServePort(ownPort *int) {
-	// Colours!!
-	cyan := color.New(color.FgCyan).SprintFunc()
-	green := color.New(color.FgGreen).SprintFunc()
-	red := color.New(color.FgRed).SprintFunc()
-	yellow := color.New(color.FgYellow).SprintFunc()
-
 	//create a new router
 	router := mux.NewRouter()
 
@@ -98,21 +98,21 @@ func FindAndServePort(ownPort *int) {
 			fmt.Printf(green("success!\n"))
 			break
 		}
-		log.Printf("%v\n%v\n", red("failed!"), yellow(err))
+		fmt.Printf("%v\n%v\n", red("failed!"), yellow(err))
 	}
 
 	if l == nil {
-		log.Printf(red("Unable to open port"))
+		fmt.Printf(red("Unable to open port"))
 		return
 	}
 
 	if err := http.Serve(l, router); err != nil { //Respond to requests
-		log.Printf("ERROR!\n%v\n", err)
+		fmt.Printf("ERROR!\n%v\n", err)
 	}
 }
 
-func SendEmptyAppendLogs(port string) {
-	resp, err := http.Post(url+port+api+endAppendLogs, "application/json", strings.NewReader(""))
+func SendEmptyAppendLogs(endpoint string) {
+	resp, err := http.Post(endpoint, "application/json", strings.NewReader(""))
 	if err != nil {
 		log.Println(err)
 		return
@@ -122,14 +122,14 @@ func SendEmptyAppendLogs(port string) {
 		log.Println(err)
 		return
 	}
-	fmt.Printf("%s:%s\n", port, string(b))
+	fmt.Printf("%s:%s\n", endpoint, string(b))
 }
 
 func HeartBeat(ownPort int) {
 	for i := 0; i < numNodes; i++ {
 		//Ping all ports except self
 		if minPort+i != ownPort {
-			SendEmptyAppendLogs(fmt.Sprintf(":%v", (minPort + i)))
+			SendEmptyAppendLogs(fmt.Sprintf("%s:%v%s%s", url, (minPort + i), api, endAppendLogs))
 		}
 	}
 }
@@ -182,12 +182,13 @@ func main() {
 		FindAndServePort(&ownPort)
 	}()
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		rGen := rand.New(rand.NewSource(time.Now().UnixNano()))
 		for {
 			performRankAction(ping, ownPort, rGen)
 		}
-
 	}()
 
 	wg.Wait()
