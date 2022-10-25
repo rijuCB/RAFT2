@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/gorilla/mux"
@@ -36,6 +38,7 @@ func (r Rank) String() string {
 const (
 	minPort  = 8091
 	numNodes = 3
+	timeout  = 1500
 
 	url            = "http://localhost"
 	api            = "/api/v1"
@@ -43,7 +46,16 @@ const (
 	endRequestVote = "/request-vote"
 )
 
+var (
+	ping chan int
+	rank Rank
+)
+
 func AppendLogs(w http.ResponseWriter, r *http.Request) {
+	if rank == Follower {
+		ping <- 1
+	}
+
 	//specify status code
 	w.WriteHeader(http.StatusOK)
 
@@ -110,7 +122,7 @@ func SendEmptyAppendLogs(port string) {
 		log.Println(err)
 		return
 	}
-	println(string(b))
+	fmt.Printf("%s:%s\n", port, string(b))
 }
 
 func HeartBeat(ownPort int) {
@@ -122,10 +134,34 @@ func HeartBeat(ownPort int) {
 	}
 }
 
+func performRankAction(ping <-chan int, ownPort int, rank *Rank, rGen *rand.Rand) {
+	fmt.Println(rank.String())
+	switch *rank {
+	case Follower:
+		//timeout
+		select {
+		case <-time.After(time.Duration(timeout+rGen.Intn(timeout)) * time.Millisecond):
+			//Upgrade to Candidate
+			fmt.Println("Promoted to Candidate")
+			*rank++
+		case <-ping:
+			fmt.Println("Ping recieved")
+		}
+	case Candidate:
+		//request votes
+		*rank++
+	case Leader:
+		select {
+		case <-time.After(time.Duration(timeout) * time.Millisecond):
+			HeartBeat(ownPort)
+		}
+	}
+}
+
 func main() {
 	var ownPort int
-	var rank Rank
-	fmt.Println(rank.String())
+	ping = make(chan int, 0)
+	defer close(ping)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -134,7 +170,13 @@ func main() {
 		FindAndServePort(&ownPort)
 	}()
 
-	HeartBeat(ownPort)
+	go func() {
+		rGen := rand.New(rand.NewSource(time.Now().UnixNano()))
+		for {
+			performRankAction(ping, ownPort, &rank, rGen)
+		}
+
+	}()
 
 	wg.Wait()
 }
