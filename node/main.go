@@ -134,27 +134,39 @@ func HeartBeat(ownPort int) {
 	}
 }
 
-func performRankAction(ping <-chan int, ownPort int, rank *Rank, rGen *rand.Rand) {
+// Wait for ping, if no ping received within timeout, promote self to candidate
+func followerAction(ping <-chan int, rGen *rand.Rand) {
+	select {
+	case <-time.After(time.Duration(timeout+rGen.Intn(timeout)) * time.Millisecond): //Timeout
+		fmt.Println("Promoted to Candidate")
+		rank++
+	case <-ping: //Pinged
+		fmt.Println("Ping recieved")
+	}
+}
+
+// Need to implement, automatically upgrade to leader for now
+func candidateAction() {
+	rank++
+}
+
+// Ping all other nodes with empty appendLogs call periodically to prevent timeouts
+func leaderAction(ownPort int) {
+	select {
+	case <-time.After(time.Duration(timeout) * time.Millisecond):
+		HeartBeat(ownPort)
+	}
+}
+
+func performRankAction(ping <-chan int, ownPort int, rGen *rand.Rand) {
 	fmt.Println(rank.String())
-	switch *rank {
+	switch rank {
 	case Follower:
-		//timeout
-		select {
-		case <-time.After(time.Duration(timeout+rGen.Intn(timeout)) * time.Millisecond):
-			//Upgrade to Candidate
-			fmt.Println("Promoted to Candidate")
-			*rank++
-		case <-ping:
-			fmt.Println("Ping recieved")
-		}
+		followerAction(ping, rGen)
 	case Candidate:
-		//request votes
-		*rank++
+		candidateAction()
 	case Leader:
-		select {
-		case <-time.After(time.Duration(timeout) * time.Millisecond):
-			HeartBeat(ownPort)
-		}
+		leaderAction(ownPort)
 	}
 }
 
@@ -173,7 +185,7 @@ func main() {
 	go func() {
 		rGen := rand.New(rand.NewSource(time.Now().UnixNano()))
 		for {
-			performRankAction(ping, ownPort, &rank, rGen)
+			performRankAction(ping, ownPort, rGen)
 		}
 
 	}()
