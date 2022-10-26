@@ -157,10 +157,13 @@ func (node *Node) findAndServePort() {
 
 func (node *Node) sendEmptyAppendLogs(endpoint string) {
 	resp, err := http.Post(endpoint, "application/json", strings.NewReader(""))
+
 	if err != nil {
 		fmt.Println(red(err))
 		return
 	}
+	defer resp.Body.Close()
+
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println(red(err))
@@ -184,6 +187,7 @@ func (node *Node) requestVoteFromNode(endpoint string) int {
 		fmt.Println(red(err))
 		return -1
 	}
+	defer resp.Body.Close()
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println(red(err))
