@@ -18,6 +18,7 @@ var (
 	yellow = color.New(color.FgYellow).SprintFunc()
 )
 
+//go:generate go run github.com/golang/mock/mockgen -destination mocks/IrestClient.go github.com/rijuCB/RAFT2/restClient IrestClient
 type IrestClient interface {
 	SendEmptyAppendLogs(string)
 	RequestVoteFromNode(string) int

@@ -33,6 +33,13 @@ var (
 	yellow = color.New(color.FgYellow).SprintFunc()
 )
 
+//go:generate go run github.com/golang/mock/mockgen -destination mocks/IRestServer.go github.com/rijuCB/RAFT2/restServer IRestServer
+type IRestServer interface {
+	FindAndServePort()
+	AppendLogs(http.ResponseWriter, *http.Request)
+	RequestVote(http.ResponseWriter, *http.Request)
+}
+
 type RestServer struct {
 	Node *node.Node
 }
