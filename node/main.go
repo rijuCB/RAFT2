@@ -55,6 +55,9 @@ type Node struct {
 
 	term int //Add mutex
 	vote int
+
+	ownPort int        //Stores ownPort addr
+	rGen    *rand.Rand //Random number gen
 }
 
 var (
@@ -118,7 +121,7 @@ func (node *Node) RequestVote(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%v", node.vote)
 }
 
-func (node *Node) FindAndServePort(ownPort *int) {
+func (node *Node) findAndServePort() {
 	//create a new router
 	router := mux.NewRouter()
 
@@ -135,7 +138,7 @@ func (node *Node) FindAndServePort(ownPort *int) {
 		fmt.Printf("Attempting to open port %v ... ", cyan(attemptPort))
 		l, err = net.Listen("tcp", attemptPort) //Attempt to open port
 		if err == nil {
-			*ownPort = minPort + i
+			node.ownPort = minPort + i
 			fmt.Printf(green("success!\n"))
 			break
 		}
@@ -152,7 +155,7 @@ func (node *Node) FindAndServePort(ownPort *int) {
 	}
 }
 
-func (node *Node) SendEmptyAppendLogs(endpoint string) {
+func (node *Node) sendEmptyAppendLogs(endpoint string) {
 	resp, err := http.Post(endpoint, "application/json", strings.NewReader(""))
 	if err != nil {
 		fmt.Println(red(err))
@@ -166,11 +169,11 @@ func (node *Node) SendEmptyAppendLogs(endpoint string) {
 	fmt.Printf("%s\n%s\n", cyan(endpoint), green(string(b)))
 }
 
-func (node *Node) HeartBeat(ownPort int) {
+func (node *Node) heartBeat() {
 	for i := 0; i < numNodes; i++ {
 		//Ping all ports except self
-		if minPort+i != ownPort {
-			node.SendEmptyAppendLogs(fmt.Sprintf("%s:%v%s%s", url, (minPort + i), api, endAppendLogs))
+		if minPort+i != node.ownPort {
+			node.sendEmptyAppendLogs(fmt.Sprintf("%s:%v%s%s", url, (minPort + i), api, endAppendLogs))
 		}
 	}
 }
@@ -196,11 +199,11 @@ func (node *Node) requestVoteFromNode(endpoint string) int {
 	return ballot
 }
 
-func (node *Node) Campaign(ownPort int, term int, votes *int) {
+func (node *Node) campaign(votes *int) {
 	for i := 0; i < numNodes; i++ {
 		//Ping all ports except self
-		if minPort+i != ownPort {
-			if node.requestVoteFromNode(fmt.Sprintf("%s:%v%s%s/%v/%v", url, (minPort+i), api, endRequestVote, term, ownPort)) == ownPort {
+		if minPort+i != node.ownPort {
+			if node.requestVoteFromNode(fmt.Sprintf("%s:%v%s%s/%v/%v", url, (minPort+i), api, endRequestVote, node.term, node.ownPort)) == node.ownPort {
 				*votes++
 			}
 		}
@@ -208,24 +211,24 @@ func (node *Node) Campaign(ownPort int, term int, votes *int) {
 }
 
 // Wait for ping, if no ping received within timeout, promote self to candidate
-func (node *Node) followerAction(ping <-chan int, rGen *rand.Rand) {
+func (node *Node) followerAction() {
 	select {
-	case <-time.After(time.Duration(timeout+rGen.Intn(timeout)) * time.Millisecond): //Timeout
+	case <-time.After(time.Duration(timeout+node.rGen.Intn(timeout)) * time.Millisecond): //Timeout
 		fmt.Println("Promoted to Candidate")
 		node.rank++
-	case <-ping: //Pinged
+	case <-node.ping: //Pinged
 		fmt.Println("Ping recieved")
 	}
 }
 
 // Need to implement, automatically upgrade to leader for now
-func (node *Node) candidateAction(ownPort int) {
+func (node *Node) candidateAction() {
 	votes := 1 //Vote for self
 	//increment term
 	node.term++
 	fmt.Printf("Campaign term: %v\n", yellow(node.term))
 	//request votes from other nodes in go routine
-	node.Campaign(ownPort, node.term, &votes)
+	node.campaign(&votes)
 
 	//Timeout
 	//If achieved a simple majority, then promote self
@@ -238,45 +241,43 @@ func (node *Node) candidateAction(ownPort int) {
 }
 
 // Ping all other nodes with empty appendLogs call periodically to prevent timeouts
-func (node *Node) leaderAction(ownPort int) {
+func (node *Node) leaderAction() {
 	select {
 	case <-time.After(time.Duration(timeout/2) * time.Millisecond):
-		node.HeartBeat(ownPort)
+		node.heartBeat()
 	}
 }
 
-func (node *Node) performRankAction(ping <-chan int, ownPort int, rGen *rand.Rand) {
+func (node *Node) performRankAction() {
 	fmt.Println(yellow(node.rank.String()))
 	switch node.rank {
 	case Follower:
-		node.followerAction(ping, rGen)
+		node.followerAction()
 	case Candidate:
-		node.candidateAction(ownPort)
+		node.candidateAction()
 	case Leader:
-		node.leaderAction(ownPort)
+		node.leaderAction()
 	}
 }
 
 func main() {
-	var ownPort int
 	ping := make(chan int, 0)
 	defer close(ping)
 
-	node := Node{ping, 0, 0, 0}
+	node := Node{ping, 0, 0, 0, 0, rand.New(rand.NewSource(time.Now().UnixNano()))}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		node.FindAndServePort(&ownPort)
+		node.findAndServePort()
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		rGen := rand.New(rand.NewSource(time.Now().UnixNano()))
 		for {
-			node.performRankAction(node.ping, ownPort, rGen)
+			node.performRankAction()
 		}
 	}()
 
