@@ -61,10 +61,10 @@ var (
 //
 //go:generate go run github.com/golang/mock/mockgen -destination mocks/Inode.go github.com/rijuCB/RAFT2/node Inode
 type Inode interface {
-	performRankAction()
-	leaderAction()
-	candidateAction()
-	followerAction()
+	PerformRankAction()
+	LeaderAction()
+	CandidateAction()
+	FollowerAction()
 }
 
 // Node struct
@@ -226,7 +226,7 @@ func (node *Node) campaign(votes *int) {
 }
 
 // Wait for ping, if no ping received within timeout, promote self to candidate
-func (node *Node) followerAction() {
+func (node *Node) FollowerAction() {
 	select {
 	case <-time.After(time.Duration(timeout+node.RandomGen.Intn(timeout)) * time.Millisecond): //Timeout
 		fmt.Println("Promoted to Candidate")
@@ -237,7 +237,7 @@ func (node *Node) followerAction() {
 }
 
 // Need to implement, automatically upgrade to leader for now
-func (node *Node) candidateAction() {
+func (node *Node) CandidateAction() {
 	votes := 1 //Vote for self
 	//increment term
 	node.Term++
@@ -254,7 +254,7 @@ func (node *Node) candidateAction() {
 }
 
 // Ping all other nodes with empty appendLogs call periodically to prevent timeouts
-func (node *Node) leaderAction() {
+func (node *Node) LeaderAction() {
 	time.Sleep(time.Duration(timeout/2) * time.Millisecond)
 	node.heartBeat()
 }
@@ -263,10 +263,10 @@ func (node *Node) PerformRankAction() {
 	fmt.Println(yellow(node.Rank.String()))
 	switch node.Rank {
 	case Follower:
-		node.followerAction()
+		node.FollowerAction()
 	case Candidate:
-		node.candidateAction()
+		node.CandidateAction()
 	case Leader:
-		node.leaderAction()
+		node.LeaderAction()
 	}
 }

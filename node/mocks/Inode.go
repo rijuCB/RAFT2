@@ -33,50 +33,50 @@ func (m *MockInode) EXPECT() *MockInodeMockRecorder {
 	return m.recorder
 }
 
-// candidateAction mocks base method.
-func (m *MockInode) candidateAction() {
+// CandidateAction mocks base method.
+func (m *MockInode) CandidateAction() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "candidateAction")
+	m.ctrl.Call(m, "CandidateAction")
 }
 
-// candidateAction indicates an expected call of candidateAction.
-func (mr *MockInodeMockRecorder) candidateAction() *gomock.Call {
+// CandidateAction indicates an expected call of CandidateAction.
+func (mr *MockInodeMockRecorder) CandidateAction() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "candidateAction", reflect.TypeOf((*MockInode)(nil).candidateAction))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CandidateAction", reflect.TypeOf((*MockInode)(nil).CandidateAction))
 }
 
-// followerAction mocks base method.
-func (m *MockInode) followerAction() {
+// FollowerAction mocks base method.
+func (m *MockInode) FollowerAction() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "followerAction")
+	m.ctrl.Call(m, "FollowerAction")
 }
 
-// followerAction indicates an expected call of followerAction.
-func (mr *MockInodeMockRecorder) followerAction() *gomock.Call {
+// FollowerAction indicates an expected call of FollowerAction.
+func (mr *MockInodeMockRecorder) FollowerAction() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "followerAction", reflect.TypeOf((*MockInode)(nil).followerAction))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FollowerAction", reflect.TypeOf((*MockInode)(nil).FollowerAction))
 }
 
-// leaderAction mocks base method.
-func (m *MockInode) leaderAction() {
+// LeaderAction mocks base method.
+func (m *MockInode) LeaderAction() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "leaderAction")
+	m.ctrl.Call(m, "LeaderAction")
 }
 
-// leaderAction indicates an expected call of leaderAction.
-func (mr *MockInodeMockRecorder) leaderAction() *gomock.Call {
+// LeaderAction indicates an expected call of LeaderAction.
+func (mr *MockInodeMockRecorder) LeaderAction() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "leaderAction", reflect.TypeOf((*MockInode)(nil).leaderAction))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LeaderAction", reflect.TypeOf((*MockInode)(nil).LeaderAction))
 }
 
-// performRankAction mocks base method.
-func (m *MockInode) performRankAction() {
+// PerformRankAction mocks base method.
+func (m *MockInode) PerformRankAction() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "performRankAction")
+	m.ctrl.Call(m, "PerformRankAction")
 }
 
-// performRankAction indicates an expected call of performRankAction.
-func (mr *MockInodeMockRecorder) performRankAction() *gomock.Call {
+// PerformRankAction indicates an expected call of PerformRankAction.
+func (mr *MockInodeMockRecorder) PerformRankAction() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "performRankAction", reflect.TypeOf((*MockInode)(nil).performRankAction))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PerformRankAction", reflect.TypeOf((*MockInode)(nil).PerformRankAction))
 }
