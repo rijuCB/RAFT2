@@ -5,7 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rijuCB/RAFT2/node"
+	node "github.com/rijuCB/RAFT2/node"
+	restServer "github.com/rijuCB/RAFT2/restServer"
 )
 
 func main() {
@@ -13,12 +14,13 @@ func main() {
 	defer close(ping)
 
 	node := node.Node{Ping: ping, RandomGen: rand.New(rand.NewSource(time.Now().UnixNano()))}
+	restAPI := restServer.RestServer{Node: &node}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		node.FindAndServePort()
+		restAPI.FindAndServePort()
 	}()
 
 	wg.Add(1)
