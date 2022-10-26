@@ -232,20 +232,16 @@ func (node *Node) candidateAction() {
 
 	//Timeout
 	//If achieved a simple majority, then promote self
-	select {
-	case <-time.After(time.Duration(timeout/2) * time.Millisecond):
-		if votes >= numNodes/2+1 {
-			node.rank++
-		}
+	time.Sleep(time.Duration(timeout/2) * time.Millisecond)
+	if votes >= numNodes/2+1 {
+		node.rank++
 	}
 }
 
 // Ping all other nodes with empty appendLogs call periodically to prevent timeouts
 func (node *Node) leaderAction() {
-	select {
-	case <-time.After(time.Duration(timeout/2) * time.Millisecond):
-		node.heartBeat()
-	}
+	time.Sleep(time.Duration(timeout/2) * time.Millisecond)
+	node.heartBeat()
 }
 
 func (node *Node) performRankAction() {
