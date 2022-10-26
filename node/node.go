@@ -1,4 +1,4 @@
-package main
+package node
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/fatih/color"
@@ -36,6 +35,7 @@ func (r Rank) String() string {
 	return "unknown"
 }
 
+// Constant vars
 const (
 	minPort  = 8091
 	numNodes = 3
@@ -49,28 +49,39 @@ const (
 	paramRequestVote = "/{term:[0-9]+}/{requester:[0-9]+}"
 )
 
-type Node struct {
-	ping chan int
-	rank Rank
-
-	term int //Add mutex
-	vote int
-
-	ownPort int        //Stores ownPort addr
-	rGen    *rand.Rand //Random number gen
-}
-
+// Colours!!
 var (
-	// Colours!!
 	cyan   = color.New(color.FgCyan).SprintFunc()
 	green  = color.New(color.FgGreen).SprintFunc()
 	red    = color.New(color.FgRed).SprintFunc()
 	yellow = color.New(color.FgYellow).SprintFunc()
 )
 
+// Interfaces
+//
+//go:generate go run github.com/golang/mock/mockgen -destination mocks/Inode.go github.com/rijuCB/RAFT2/node Inode
+type Inode interface {
+	performRankAction()
+	leaderAction()
+	candidateAction()
+	followerAction()
+}
+
+// Node struct
+type Node struct {
+	Ping chan int
+	Rank Rank
+
+	Term int //Add mutex
+	Vote int
+
+	OwnPort   int        //Stores ownPort addr
+	RandomGen *rand.Rand //Random number gen
+}
+
 func (node *Node) AppendLogs(w http.ResponseWriter, r *http.Request) {
-	if node.rank == Follower {
-		node.ping <- 1
+	if node.Rank == Follower {
+		node.Ping <- 1
 	}
 
 	//specify status code
@@ -107,21 +118,21 @@ func (node *Node) RequestVote(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("Received vote request from node:%v for term %v\n", cyan(requester), yellow(newTerm))
 
-	if newTerm > node.term {
-		node.vote = requester
-		node.term = newTerm
+	if newTerm > node.Term {
+		node.Vote = requester
+		node.Term = newTerm
 	}
-	if node.rank == Follower {
-		node.ping <- 1
+	if node.Rank == Follower {
+		node.Ping <- 1
 	}
 
-	fmt.Printf("Vote cast for %v\n", green(node.vote))
+	fmt.Printf("Vote cast for %v\n", green(node.Vote))
 
 	//update response
-	fmt.Fprintf(w, "%v", node.vote)
+	fmt.Fprintf(w, "%v", node.Vote)
 }
 
-func (node *Node) findAndServePort() {
+func (node *Node) FindAndServePort() {
 	//create a new router
 	router := mux.NewRouter()
 
@@ -138,7 +149,7 @@ func (node *Node) findAndServePort() {
 		fmt.Printf("Attempting to open port %v ... ", cyan(attemptPort))
 		l, err = net.Listen("tcp", attemptPort) //Attempt to open port
 		if err == nil {
-			node.ownPort = minPort + i
+			node.OwnPort = minPort + i
 			fmt.Printf(green("success!\n"))
 			break
 		}
@@ -175,7 +186,7 @@ func (node *Node) sendEmptyAppendLogs(endpoint string) {
 func (node *Node) heartBeat() {
 	for i := 0; i < numNodes; i++ {
 		//Ping all ports except self
-		if minPort+i != node.ownPort {
+		if minPort+i != node.OwnPort {
 			node.sendEmptyAppendLogs(fmt.Sprintf("%s:%v%s%s", url, (minPort + i), api, endAppendLogs))
 		}
 	}
@@ -206,8 +217,8 @@ func (node *Node) requestVoteFromNode(endpoint string) int {
 func (node *Node) campaign(votes *int) {
 	for i := 0; i < numNodes; i++ {
 		//Ping all ports except self
-		if minPort+i != node.ownPort {
-			if node.requestVoteFromNode(fmt.Sprintf("%s:%v%s%s/%v/%v", url, (minPort+i), api, endRequestVote, node.term, node.ownPort)) == node.ownPort {
+		if minPort+i != node.OwnPort {
+			if node.requestVoteFromNode(fmt.Sprintf("%s:%v%s%s/%v/%v", url, (minPort+i), api, endRequestVote, node.Term, node.OwnPort)) == node.OwnPort {
 				*votes++
 			}
 		}
@@ -217,10 +228,10 @@ func (node *Node) campaign(votes *int) {
 // Wait for ping, if no ping received within timeout, promote self to candidate
 func (node *Node) followerAction() {
 	select {
-	case <-time.After(time.Duration(timeout+node.rGen.Intn(timeout)) * time.Millisecond): //Timeout
+	case <-time.After(time.Duration(timeout+node.RandomGen.Intn(timeout)) * time.Millisecond): //Timeout
 		fmt.Println("Promoted to Candidate")
-		node.rank++
-	case <-node.ping: //Pinged
+		node.Rank++
+	case <-node.Ping: //Pinged
 		fmt.Println("Ping recieved")
 	}
 }
@@ -229,8 +240,8 @@ func (node *Node) followerAction() {
 func (node *Node) candidateAction() {
 	votes := 1 //Vote for self
 	//increment term
-	node.term++
-	fmt.Printf("Campaign term: %v\n", yellow(node.term))
+	node.Term++
+	fmt.Printf("Campaign term: %v\n", yellow(node.Term))
 	//request votes from other nodes in go routine
 	node.campaign(&votes)
 
@@ -238,7 +249,7 @@ func (node *Node) candidateAction() {
 	//If achieved a simple majority, then promote self
 	time.Sleep(time.Duration(timeout/2) * time.Millisecond)
 	if votes >= numNodes/2+1 {
-		node.rank++
+		node.Rank++
 	}
 }
 
@@ -248,9 +259,9 @@ func (node *Node) leaderAction() {
 	node.heartBeat()
 }
 
-func (node *Node) performRankAction() {
-	fmt.Println(yellow(node.rank.String()))
-	switch node.rank {
+func (node *Node) PerformRankAction() {
+	fmt.Println(yellow(node.Rank.String()))
+	switch node.Rank {
 	case Follower:
 		node.followerAction()
 	case Candidate:
@@ -258,28 +269,4 @@ func (node *Node) performRankAction() {
 	case Leader:
 		node.leaderAction()
 	}
-}
-
-func main() {
-	ping := make(chan int, 0)
-	defer close(ping)
-
-	node := Node{ping, 0, 0, 0, 0, rand.New(rand.NewSource(time.Now().UnixNano()))}
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		node.findAndServePort()
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			node.performRankAction()
-		}
-	}()
-
-	wg.Wait()
 }

@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/fatih/color v1.13.0
+	github.com/golang/mock v1.6.0
 	github.com/gorilla/mux v1.8.0
 )
 
