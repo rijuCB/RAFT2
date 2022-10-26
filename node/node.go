@@ -72,14 +72,14 @@ type Node struct {
 
 	OwnPort   int        //Stores ownPort addr
 	RandomGen *rand.Rand //Random number gen
-	api       restClient.RestClient
+	API       restClient.IrestClient
 }
 
 func (node *Node) heartBeat() {
 	for i := 0; i < numNodes; i++ {
 		//Ping all ports except self
 		if minPort+i != node.OwnPort {
-			node.api.SendEmptyAppendLogs(fmt.Sprintf("%s:%v%s%s", url, (minPort + i), apiURL, endAppendLogs))
+			node.API.SendEmptyAppendLogs(fmt.Sprintf("%s:%v%s%s", url, (minPort + i), apiURL, endAppendLogs))
 		}
 	}
 }
@@ -88,7 +88,7 @@ func (node *Node) campaign(votes *int) {
 	for i := 0; i < numNodes; i++ {
 		//Ping all ports except self
 		if minPort+i != node.OwnPort {
-			if node.api.RequestVoteFromNode(fmt.Sprintf("%s:%v%s%s/%v/%v", url, (minPort+i), apiURL, endRequestVote, node.Term, node.OwnPort)) == node.OwnPort {
+			if node.API.RequestVoteFromNode(fmt.Sprintf("%s:%v%s%s/%v/%v", url, (minPort+i), apiURL, endRequestVote, node.Term, node.OwnPort)) == node.OwnPort {
 				*votes++
 			}
 		}
@@ -99,6 +99,7 @@ func (node *Node) campaign(votes *int) {
 func (node *Node) FollowerAction() {
 	select {
 	case <-time.After(time.Duration(timeout+node.RandomGen.Intn(timeout)) * time.Millisecond): //Timeout
+		fmt.Println(red("Ping not recieved"))
 		fmt.Println("Promoted to Candidate")
 		node.Rank++
 	case <-node.Ping: //Pinged

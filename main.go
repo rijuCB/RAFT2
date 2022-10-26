@@ -6,6 +6,7 @@ import (
 	"time"
 
 	node "github.com/rijuCB/RAFT2/node"
+	restClient "github.com/rijuCB/RAFT2/restClient"
 	restServer "github.com/rijuCB/RAFT2/restServer"
 )
 
@@ -13,7 +14,7 @@ func main() {
 	ping := make(chan int, 0)
 	defer close(ping)
 
-	node := node.Node{Ping: ping, RandomGen: rand.New(rand.NewSource(time.Now().UnixNano()))}
+	node := node.Node{Ping: ping, RandomGen: rand.New(rand.NewSource(time.Now().UnixNano())), API: &restClient.RestClient{}}
 	restAPI := restServer.RestServer{Node: &node}
 
 	var wg sync.WaitGroup
