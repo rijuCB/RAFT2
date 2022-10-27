@@ -17,7 +17,7 @@ const (
 	numNodes = 3
 	timeout  = 1500
 
-	url              = "http://localhost"
+	// url              = "http://localhost"
 	apiURL           = "/api/v1"
 	endAppendLogs    = "/append-logs"
 	paramAppendLogs  = ""
@@ -42,6 +42,7 @@ type IRestServer interface {
 
 type RestServer struct {
 	Node *node.Node
+	// server *http.Server //Add this to allow closing the server externally
 }
 
 func (api *RestServer) AppendLogs(w http.ResponseWriter, r *http.Request) {
