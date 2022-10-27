@@ -20,7 +20,7 @@ func TestRankEnum(t *testing.T) {
 	require.Equal(t, rankTest.String(), "unknown")
 }
 
-func TestNodeAPI(t *testing.T) {
+func TestNodeFollower(t *testing.T) {
 	var (
 		ctrl = gomock.NewController(t)
 		cli  = mock_client.NewMockIrestClient(ctrl)
@@ -39,7 +39,16 @@ func TestNodeAPI(t *testing.T) {
 	nodeTest.PerformRankAction()
 	require.Equal(t, nodeTest.Rank, Candidate)
 
-	//Candidate tests
+}
+
+func TestNodeCandidate(t *testing.T) {
+	var (
+		ctrl = gomock.NewController(t)
+		cli  = mock_client.NewMockIrestClient(ctrl)
+	)
+	ping := make(chan int, 1)
+	defer close(ping)
+	nodeTest := Node{Ping: ping, OwnPort: 8091, RandomGen: rand.New(rand.NewSource(0)), API: cli}
 
 	//No votes - Remain candidate
 	nodeTest.Rank = Candidate
@@ -58,9 +67,18 @@ func TestNodeAPI(t *testing.T) {
 	nodeTest.PerformRankAction()
 	require.Equal(t, nodeTest.Rank, Leader)
 
-	//Leader tests
+}
+
+func TestNodeLEader(t *testing.T) {
+	var (
+		ctrl = gomock.NewController(t)
+		cli  = mock_client.NewMockIrestClient(ctrl)
+	)
+	ping := make(chan int, 1)
+	defer close(ping)
+	nodeTest := Node{Ping: ping, OwnPort: 8091, RandomGen: rand.New(rand.NewSource(0)), API: cli}
+
 	cli.EXPECT().SendEmptyAppendLogs(gomock.Any()).Times(2)
 	nodeTest.Rank = Leader
 	nodeTest.PerformRankAction()
-
 }
