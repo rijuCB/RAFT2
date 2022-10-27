@@ -69,7 +69,7 @@ func TestNodeCandidate(t *testing.T) {
 
 }
 
-func TestNodeLEader(t *testing.T) {
+func TestNodeLeader(t *testing.T) {
 	var (
 		ctrl = gomock.NewController(t)
 		cli  = mock_client.NewMockIrestClient(ctrl)

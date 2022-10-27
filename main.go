@@ -21,7 +21,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		restAPI.FindAndServePort()
+		restAPI.ServePort(restAPI.FindPort())
 	}()
 
 	wg.Add(1)

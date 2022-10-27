@@ -41,8 +41,8 @@ type IRestServer interface {
 }
 
 type RestServer struct {
-	Node *node.Node
-	// server *http.Server //Add this to allow closing the server externally
+	Node   *node.Node
+	Server *http.Server //Add this to allow closing the server externally
 }
 
 func (api *RestServer) AppendLogs(w http.ResponseWriter, r *http.Request) {
@@ -98,16 +98,8 @@ func (api *RestServer) RequestVote(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%v", api.Node.Vote)
 }
 
-func (api *RestServer) FindAndServePort() {
-	//create a new router
-	router := mux.NewRouter()
-
-	// specify endpoints, handler functions and HTTP method
-	router.HandleFunc(apiURL+endAppendLogs+paramAppendLogs, api.AppendLogs).Methods("POST")
-	router.HandleFunc(apiURL+endRequestVote+paramRequestVote, api.RequestVote).Methods("GET")
-	http.Handle("/", router)
-
-	var l net.Listener
+func (api *RestServer) FindPort() net.Listener {
+	var l net.Listener = nil
 	var err error
 	//Search for open ports
 	for i := 0; i < numNodes; i++ {
@@ -124,10 +116,26 @@ func (api *RestServer) FindAndServePort() {
 
 	if l == nil {
 		fmt.Printf(red("Unable to open port"))
-		return
+		return nil
 	}
 
-	if err := http.Serve(l, router); err != nil { //Respond to requests
+	return l
+}
+
+func (api *RestServer) ServePort(l net.Listener) {
+	//create a new router
+	router := mux.NewRouter()
+
+	// specify endpoints, handler functions and HTTP method
+	router.HandleFunc(apiURL+endAppendLogs+paramAppendLogs, api.AppendLogs).Methods("POST")
+	router.HandleFunc(apiURL+endRequestVote+paramRequestVote, api.RequestVote).Methods("GET")
+	http.Handle("/", router)
+
+	api.Server = &http.Server{Handler: router}
+
+	err := api.Server.Serve(l)
+	if err != nil { //Respond to requests
 		fmt.Printf("ERROR!\n%v\n", err)
 	}
+
 }
