@@ -27,6 +27,7 @@ type IrestClient interface {
 type RestClient struct {
 }
 
+// Sends an empty AppendLogs request to reset the target nodes timeout
 func (api *RestClient) SendEmptyAppendLogs(endpoint string) error {
 	resp, err := http.Post(endpoint, "application/json", strings.NewReader(""))
 
@@ -43,6 +44,7 @@ func (api *RestClient) SendEmptyAppendLogs(endpoint string) error {
 	return nil
 }
 
+// Requests an external node for a vote
 func (api *RestClient) RequestVoteFromNode(endpoint string) (int, error) {
 	resp, err := http.Get(endpoint)
 	if err != nil {
@@ -53,7 +55,7 @@ func (api *RestClient) RequestVoteFromNode(endpoint string) (int, error) {
 	if err != nil {
 		return -1, err
 	}
-
+	//Ensure vote it a valid integer
 	ballot, err := strconv.Atoi(string(b))
 	if err != nil {
 		return -1, err

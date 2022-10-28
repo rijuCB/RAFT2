@@ -45,6 +45,8 @@ type RestServer struct {
 	Server *http.Server //Add this to allow closing the server externally
 }
 
+// Append logs to node (Not implemented)
+// Resets node timeout
 func (api *RestServer) AppendLogs(w http.ResponseWriter, r *http.Request) {
 	if api.Node.Rank == node.Follower {
 		api.Node.Ping <- 1
@@ -57,6 +59,7 @@ func (api *RestServer) AppendLogs(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "API is up and running")
 }
 
+// Parse http request and confirm they are integer values
 func (api *RestServer) parseVoteRequest(r *http.Request) (int, int) {
 	vars := mux.Vars(r)
 	term, err := strconv.Atoi(vars["term"])
@@ -72,6 +75,10 @@ func (api *RestServer) parseVoteRequest(r *http.Request) (int, int) {
 	return term, requester
 }
 
+// Responds to a vote request
+// If first candidate in a term, votes for them
+// Voted candidate remains consistent through a term
+// Also resets node timeout
 func (api *RestServer) RequestVote(w http.ResponseWriter, r *http.Request) {
 	newTerm, requester := api.parseVoteRequest(r)
 	if newTerm < 0 || requester < 0 {
@@ -98,6 +105,7 @@ func (api *RestServer) RequestVote(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%v", api.Node.Vote)
 }
 
+// Search for an open port and return a listener with the reserved port
 func (api *RestServer) FindPort() net.Listener {
 	var l net.Listener = nil
 	var err error
@@ -122,6 +130,7 @@ func (api *RestServer) FindPort() net.Listener {
 	return l
 }
 
+// Create a REST server on a provided reserved port that API calls can be made to
 func (api *RestServer) ServePort(l net.Listener) {
 	//create a new router
 	router := mux.NewRouter()
@@ -135,7 +144,7 @@ func (api *RestServer) ServePort(l net.Listener) {
 
 	err := api.Server.Serve(l)
 	if err != nil { //Respond to requests
-		fmt.Printf("ERROR!\n%v\n", err)
+		fmt.Printf("ERROR!\n%v\n", red(err))
 	}
 
 }
