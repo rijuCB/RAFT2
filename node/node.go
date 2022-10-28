@@ -75,6 +75,7 @@ type Node struct {
 	API       restClient.IrestClient
 }
 
+// Reset all other nodes timeouts to keep them in the follower state
 func (node *Node) heartBeat() {
 	for i := 0; i < numNodes; i++ {
 		//Ping all ports except self
@@ -84,6 +85,7 @@ func (node *Node) heartBeat() {
 	}
 }
 
+// Requests all other nodes in the system for a vote for the current known term
 func (node *Node) campaign(votes *int) {
 	for i := 0; i < numNodes; i++ {
 		//Ping all ports except self
@@ -114,15 +116,13 @@ func (node *Node) FollowerAction() {
 
 // Need to implement, automatically upgrade to leader for now
 func (node *Node) CandidateAction() {
-	votes := 1 //Vote for self
-	//increment term
-	node.Term++
+	votes := 1  // Vote for self
+	node.Term++ // increment term
 	fmt.Printf("Campaign term: %v\n", yellow(node.Term))
-	//request votes from other nodes in go routine
-	node.campaign(&votes)
+	node.campaign(&votes) // Request votes from other nodes in go routine
 
-	//Timeout
-	//If achieved a simple majority, then promote self
+	// Timeout
+	// If achieved a simple majority, then promote self
 	time.Sleep(time.Duration(timeout/2) * time.Millisecond)
 	if votes >= numNodes/2+1 {
 		node.Rank++
@@ -135,6 +135,8 @@ func (node *Node) LeaderAction() {
 	node.heartBeat()
 }
 
+// 'Main' function of the node
+// Executes the appropriate function
 func (node *Node) PerformRankAction() {
 	fmt.Println(yellow(node.Rank.String()))
 	switch node.Rank {
