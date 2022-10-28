@@ -34,11 +34,12 @@ func (m *MockIrestClient) EXPECT() *MockIrestClientMockRecorder {
 }
 
 // RequestVoteFromNode mocks base method.
-func (m *MockIrestClient) RequestVoteFromNode(arg0 string) int {
+func (m *MockIrestClient) RequestVoteFromNode(arg0 string) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RequestVoteFromNode", arg0)
 	ret0, _ := ret[0].(int)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // RequestVoteFromNode indicates an expected call of RequestVoteFromNode.
@@ -48,9 +49,11 @@ func (mr *MockIrestClientMockRecorder) RequestVoteFromNode(arg0 interface{}) *go
 }
 
 // SendEmptyAppendLogs mocks base method.
-func (m *MockIrestClient) SendEmptyAppendLogs(arg0 string) {
+func (m *MockIrestClient) SendEmptyAppendLogs(arg0 string) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SendEmptyAppendLogs", arg0)
+	ret := m.ctrl.Call(m, "SendEmptyAppendLogs", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // SendEmptyAppendLogs indicates an expected call of SendEmptyAppendLogs.

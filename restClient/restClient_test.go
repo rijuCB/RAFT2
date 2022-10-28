@@ -21,7 +21,7 @@ func TestSendEmptyAppendLogs(t *testing.T) {
 	client.SendEmptyAppendLogs(svr.URL)
 }
 
-func MockRequestServer(payload string) int {
+func MockRequestServer(payload string) (int, error) {
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, payload)
 	}))
@@ -33,6 +33,12 @@ func MockRequestServer(payload string) int {
 }
 
 func TestRequestVoteFromNode(t *testing.T) {
-	require.Equal(t, -1, MockRequestServer(""))
-	require.Equal(t, 8092, MockRequestServer("8092"))
+	var vote int
+	var err error
+	vote, err = MockRequestServer("")
+	require.Equal(t, -1, vote)
+	require.Error(t, err)
+	vote, err = MockRequestServer("8092")
+	require.Equal(t, 8092, vote)
+	require.NoError(t, err)
 }

@@ -88,7 +88,12 @@ func (node *Node) campaign(votes *int) {
 	for i := 0; i < numNodes; i++ {
 		//Ping all ports except self
 		if minPort+i != node.OwnPort {
-			if node.API.RequestVoteFromNode(fmt.Sprintf("%s:%v%s%s/%v/%v", url, (minPort+i), apiURL, endRequestVote, node.Term, node.OwnPort)) == node.OwnPort {
+			newVote, err := node.API.RequestVoteFromNode(fmt.Sprintf("%s:%v%s%s/%v/%v", url, (minPort + i), apiURL, endRequestVote, node.Term, node.OwnPort))
+			if err != nil {
+				fmt.Println(red(err))
+				continue
+			}
+			if newVote == node.OwnPort {
 				*votes++
 			}
 		}

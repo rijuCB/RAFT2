@@ -20,48 +20,44 @@ var (
 
 //go:generate go run github.com/golang/mock/mockgen -destination mocks/IrestClient.go github.com/rijuCB/RAFT2/restClient IrestClient
 type IrestClient interface {
-	SendEmptyAppendLogs(string)
-	RequestVoteFromNode(string) int
+	SendEmptyAppendLogs(string) error
+	RequestVoteFromNode(string) (int, error)
 }
 
 type RestClient struct {
 }
 
-func (api *RestClient) SendEmptyAppendLogs(endpoint string) {
+func (api *RestClient) SendEmptyAppendLogs(endpoint string) error {
 	resp, err := http.Post(endpoint, "application/json", strings.NewReader(""))
 
 	if err != nil {
-		fmt.Println(red(err))
-		return
+		return err
 	}
 	defer resp.Body.Close()
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println(red(err))
-		return
+		return err
 	}
 	fmt.Printf("%s\n%s\n", cyan(endpoint), green(string(b)))
+	return nil
 }
 
-func (api *RestClient) RequestVoteFromNode(endpoint string) int {
+func (api *RestClient) RequestVoteFromNode(endpoint string) (int, error) {
 	resp, err := http.Get(endpoint)
 	if err != nil {
-		fmt.Println(red(err))
-		return -1
+		return -1, err
 	}
 	defer resp.Body.Close()
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println(red(err))
-		return -1
+		return -1, err
 	}
 
 	ballot, err := strconv.Atoi(string(b))
 	if err != nil {
-		fmt.Println(red(err))
-		return -1
+		return -1, err
 	}
 	fmt.Printf("%s\n%s\n", cyan(endpoint), green(ballot))
-	return ballot
+	return ballot, nil
 }

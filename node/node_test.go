@@ -1,6 +1,7 @@
 package node
 
 import (
+	"errors"
 	"math/rand"
 	"testing"
 
@@ -52,18 +53,18 @@ func TestNodeCandidate(t *testing.T) {
 
 	//No votes - Remain candidate
 	nodeTest.Rank = Candidate
-	cli.EXPECT().RequestVoteFromNode(gomock.Any()).Return(-1).Times(2)
+	cli.EXPECT().RequestVoteFromNode(gomock.Any()).Return(-1, errors.New("err")).Times(2)
 	nodeTest.PerformRankAction()
 	require.Equal(t, nodeTest.Rank, Candidate)
 	//1 vote - Become leader
 	nodeTest.Rank = Candidate
-	cli.EXPECT().RequestVoteFromNode(gomock.Any()).Return(-1).Times(1)
-	cli.EXPECT().RequestVoteFromNode(gomock.Any()).Return(8091).Times(1)
+	cli.EXPECT().RequestVoteFromNode(gomock.Any()).Return(-1, errors.New("err")).Times(1)
+	cli.EXPECT().RequestVoteFromNode(gomock.Any()).Return(8091, nil).Times(1)
 	nodeTest.PerformRankAction()
 	require.Equal(t, nodeTest.Rank, Leader)
 	//2 votes - Become leader
 	nodeTest.Rank = Candidate
-	cli.EXPECT().RequestVoteFromNode(gomock.Any()).Return(8091).Times(2)
+	cli.EXPECT().RequestVoteFromNode(gomock.Any()).Return(8091, nil).Times(2)
 	nodeTest.PerformRankAction()
 	require.Equal(t, nodeTest.Rank, Leader)
 
